@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S. v3.2 — Stable Recognition</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-deep: #061018; --bg-primary: #0a1822; --bg-secondary: #0d1f2d; --bg-tertiary: #142838;
+    --accent: #4dd0e1; --accent-bright: #80deea; --accent-glow: #00e5ff; --accent-dim: #006978;
+    --warm: #ff9933; --success: #00e676; --danger: #ff5252;
+    --text-primary: #e0f7fa; --text-secondary: #80a4b8; --text-tertiary: #4a6878;
+    --border: rgba(77, 208, 225, 0.18); --border-strong: rgba(77, 208, 225, 0.4);
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  body { background: var(--bg-deep); background-image: radial-gradient(ellipse at 30% 20%, rgba(77, 208, 225, 0.04) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(0, 105, 120, 0.05) 0%, transparent 50%); min-height: 100vh; color: var(--text-primary); font-family: var(--font-sans); padding: 16px; overflow-x: hidden; }
+  .container { max-width: 920px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; margin-bottom: 16px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; position: relative; }
+  .header::before { content: ''; position: absolute; top: -1px; left: 20%; right: 20%; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-glow), transparent); }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-tertiary); box-shadow: 0 0 0 3px rgba(74,104,120,0.2); transition: all 0.3s; }
+  .logo-text { font-family: var(--font-mono); font-size: 15px; font-weight: 600; letter-spacing: 4px; color: var(--accent-bright); }
+  .header-right { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); letter-spacing: 1.5px; }
+  .api-badge { padding: 3px 8px; border-radius: 3px; background: rgba(0,230,118,0.08); color: var(--success); border: 1px solid rgba(0,230,118,0.25); font-size: 9px; }
+  .api-badge.disconnected { background: rgba(255,82,82,0.08); color: var(--danger); border-color: rgba(255,82,82,0.25); }
+  .panel { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 18px; margin-bottom: 14px; }
+  .panel-label { font-family: var(--font-mono); font-size: 10px; color: var(--accent-dim); letter-spacing: 2px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .panel-label .right { color: var(--text-tertiary); font-size: 9px; }
+  .viz-panel { padding: 0; overflow: hidden; position: relative; background: radial-gradient(ellipse at center, #0a1828 0%, #061018 100%); min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #particleCanvas { width: 100%; height: 380px; display: block; }
+  .viz-status-bar { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 3px; color: var(--accent-bright); }
+  .viz-dashes { display: flex; gap: 3px; }
+  .viz-dashes span { width: 4px; height: 1px; background: var(--accent-dim); transition: background 0.2s; }
+  .viz-dashes span.active { background: var(--accent-glow); box-shadow: 0 0 4px var(--accent-glow); }
+  .viz-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-glow); box-shadow: 0 0 8px var(--accent-glow); animation: glow-pulse 2s ease-in-out infinite; }
+  @keyframes glow-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--accent-glow); } 50% { opacity: 0.5; box-shadow: 0 0 4px var(--accent-glow); } }
+  .viz-transcript { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); font-family: var(--font-sans); font-size: 15px; color: var(--text-primary); text-align: center; max-width: 80%; padding: 8px 16px; background: rgba(6,16,24,0.6); border-radius: 4px; backdrop-filter: blur(4px); border: 1px solid var(--border); min-height: 36px; display: flex; align-items: center; justify-content: center; }
+  .viz-transcript.placeholder { color: var(--text-tertiary); border-color: transparent; background: transparent; }
+  .viz-transcript.interim { color: var(--text-secondary); font-style: italic; }
+  .controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  button { flex: 1; min-width: 120px; padding: 12px 14px; background: transparent; border: 1px solid var(--border-strong); color: var(--accent-bright); font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 1.5px; border-radius: 4px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  button:hover:not(:disabled) { background: rgba(77,208,225,0.08); border-color: var(--accent); box-shadow: 0 0 16px rgba(77,208,225,0.25); }
+  button:disabled { opacity: 0.25; cursor: not-allowed; }
+  button.danger { color: var(--danger); border-color: rgba(255,82,82,0.4); }
+  button.danger:hover:not(:disabled) { background: rgba(255,82,82,0.08); box-shadow: 0 0 16px rgba(255,82,82,0.25); }
+  button.icon-only { flex: 0 0 auto; min-width: 0; padding: 12px 16px; }
+  button.small { flex: 0 0 auto; min-width: 0; padding: 8px 14px; font-size: 11px; }
+  button.diag { background: rgba(255,153,51,0.08); color: var(--warm); border-color: rgba(255,153,51,0.4); }
+  button.diag:hover:not(:disabled) { box-shadow: 0 0 16px rgba(255,153,51,0.3); }
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .config-item { display: flex; flex-direction: column; gap: 5px; }
+  .config-item label { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); letter-spacing: 1.5px; }
+  select, input[type="text"], input[type="password"] { padding: 9px 11px; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); font-family: var(--font-sans); font-size: 12px; border-radius: 3px; outline: none; width: 100%; }
+  select:focus, input[type="text"]:focus, input[type="password"]:focus { border-color: var(--accent); }
+  .slider-row { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 3px; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: pointer; box-shadow: 0 0 8px rgba(77,208,225,0.5); }
+  .slider-val { min-width: 32px; text-align: right; color: var(--accent-bright); }
+  .api-config { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+  .api-config .config-item { flex: 1; min-width: 200px; }
+  .api-config button { flex: 0 0 auto; min-width: 0; padding: 9px 14px; }
+  .key-validator { margin-top: 10px; padding: 10px 12px; border-radius: 4px; background: var(--bg-tertiary); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px; line-height: 1.7; }
+  .key-check { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+  .key-check .indicator { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: var(--bg-secondary); color: var(--text-tertiary); font-size: 9px; font-weight: bold; }
+  .key-check.ok .indicator { background: var(--success); color: var(--bg-deep); }
+  .key-check.fail .indicator { background: var(--danger); color: white; }
+  .key-check.warn .indicator { background: var(--warm); color: var(--bg-deep); }
+  .key-check.ok { color: var(--success); }
+  .key-check.fail { color: var(--danger); }
+  .key-check.warn { color: var(--warm); }
+  .log-area { max-height: 200px; overflow-y: auto; font-family: var(--font-mono); font-size: 10px; line-height: 1.7; padding-right: 6px; }
+  .log-area::-webkit-scrollbar { width: 3px; }
+  .log-area::-webkit-scrollbar-track { background: var(--bg-tertiary); }
+  .log-area::-webkit-scrollbar-thumb { background: var(--accent-dim); border-radius: 2px; }
+  .log-entry { color: var(--text-secondary); padding: 1px 0; }
+  .log-entry.wake { color: var(--accent-bright); }
+  .log-entry.user { color: var(--success); }
+  .log-entry.jarvis { color: var(--warm); }
+  .log-entry.err { color: var(--danger); }
+  .log-entry.api { color: var(--accent); }
+  .log-entry.heard { color: var(--text-primary); font-weight: 600; background: rgba(77,208,225,0.06); padding: 2px 6px; border-left: 2px solid var(--accent-glow); }
+  .log-entry.diag { color: var(--warm); background: rgba(255,153,51,0.05); padding: 2px 6px; border-left: 2px solid var(--warm); }
+  .log-time { color: var(--text-tertiary); margin-right: 6px; }
+  .response-area { padding: 14px; background: var(--bg-tertiary); border-left: 2px solid var(--accent); border-radius: 3px; margin-top: 10px; font-size: 13px; line-height: 1.6; min-height: 50px; color: var(--text-primary); white-space: pre-wrap; max-height: 280px; overflow-y: auto; }
+  .response-area.empty { color: var(--text-tertiary); font-style: italic; }
+  .response-area .user-label { color: var(--success); font-weight: 600; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; }
+  .response-area .jarvis-label { color: var(--warm); font-weight: 600; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; }
+  .response-area .divider { border-top: 1px dashed var(--border); margin: 8px 0; }
+  .footer { margin-top: 16px; padding: 10px 18px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); letter-spacing: 1.5px; flex-wrap: wrap; gap: 8px; }
+  .toggle-section { cursor: pointer; user-select: none; }
+  .toggle-section:hover { color: var(--accent); }
+  .help-link { color: var(--accent-bright); text-decoration: none; }
+  .help-link:hover { text-decoration: underline; }
+  .stt-indicator { font-family: var(--font-mono); font-size: 9px; padding: 3px 6px; border-radius: 3px; }
+  .stt-indicator.running { background: rgba(0,230,118,0.1); color: var(--success); border: 1px solid rgba(0,230,118,0.3); }
+  .stt-indicator.stopped { background: rgba(74,104,120,0.1); color: var(--text-tertiary); border: 1px solid rgba(74,104,120,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="logo">
+      <div class="status-dot" id="statusDot"></div>
+      <div class="logo-text">J.A.R.V.I.S.</div>
+    </div>
+    <div class="header-right">
+      <span id="statusText">STANDBY</span>
+      <span class="stt-indicator stopped" id="sttIndicator">STT:STOPPED</span>
+      <span class="api-badge disconnected" id="apiBadge">API: OFFLINE</span>
+      <span>v3.2</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">
+      <span>// CONEXIÓN CLAUDE API</span>
+      <span class="right toggle-section" id="apiToggle">[ ocultar ▲ ]</span>
+    </div>
+    <div id="apiSection">
+      <div class="api-config" style="margin-bottom: 10px;">
+        <div class="config-item">
+          <label>ANTHROPIC API KEY</label>
+          <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+        </div>
+        <button id="saveKey">Guardar</button>
+        <button id="clearKey" class="danger">Borrar</button>
+      </div>
+      <div class="key-validator" id="keyValidator">
+        <div class="key-check"><span class="indicator">?</span><span>Esperando entrada de API key...</span></div>
+      </div>
+      <div class="config-grid" style="margin-top: 12px;">
+        <div class="config-item">
+          <label>MODELO</label>
+          <select id="modelSelect">
+            <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+            <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+            <option value="claude-opus-4-5">Claude Opus 4.5</option>
+            <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (legacy)</option>
+            <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (legacy)</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <label>MEMORIA</label>
+          <select id="memoryMode">
+            <option value="session">Sesión completa</option>
+            <option value="last5">Últimos 5 turnos</option>
+            <option value="none">Sin memoria</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="small" id="testApi">⚡ Probar API</button>
+        <button class="small" id="clearMemoryBtn">🗑 Borrar memoria</button>
+      </div>
+      <div style="margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); line-height: 1.7;">
+        ℹ <a href="https://console.anthropic.com/settings/keys" target="_blank" class="help-link">console.anthropic.com/settings/keys</a> · <a href="https://console.anthropic.com/settings/billing" target="_blank" class="help-link">billing</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel viz-panel" id="vizPanel">
+    <canvas id="particleCanvas"></canvas>
+    <div class="viz-transcript placeholder" id="transcript">Presione INICIAR ESCUCHA para activar</div>
+    <div class="viz-status-bar">
+      <div class="viz-dashes" id="dashes"></div>
+      <div class="viz-status-dot"></div>
+      <span id="vizStatusLabel">STANDBY</span>
+      <div class="viz-dashes" id="dashes2"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="startBtn">▶ INICIAR ESCUCHA</button>
+    <button id="stopBtn" class="danger" disabled>■ DETENER</button>
+    <button id="testMicBtn" class="diag">🎤 TEST DE MIC</button>
+    <button id="testBtn" class="icon-only" title="Probar voz">🔊</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">// CONFIGURACIÓN DE AUDIO</div>
+    <div class="config-grid">
+      <div class="config-item">
+        <label>IDIOMA DE ENTRADA</label>
+        <select id="langSelect">
+          <option value="es-ES">Español (España) ⭐</option>
+          <option value="es-419">Español (Latinoamérica)</option>
+          <option value="es-CL">Español (Chile)</option>
+          <option value="es-MX">Español (México)</option>
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+        </select>
+      </div>
+      <div class="config-item">
+        <label>VOZ DE JARVIS</label>
+        <select id="voiceSelect"></select>
+      </div>
+      <div class="config-item">
+        <label>VELOCIDAD</label>
+        <div class="slider-row"><input type="range" id="rateSlider" min="0.5" max="1.5" step="0.05" value="0.95"><span class="slider-val" id="rateVal">0.95</span></div>
+      </div>
+      <div class="config-item">
+        <label>TONO</label>
+        <div class="slider-row"><input type="range" id="pitchSlider" min="0.5" max="1.5" step="0.05" value="0.85"><span class="slider-val" id="pitchVal">0.85</span></div>
+      </div>
+    </div>
+    <div style="margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap;">
+      <label style="display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); cursor: pointer;">
+        <input type="checkbox" id="wakeRequired"> Requerir "Hey JARVIS"
+      </label>
+      <label style="display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); cursor: pointer;">
+        <input type="checkbox" id="debugMode" checked> Modo debug
+      </label>
+      <label style="display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); cursor: pointer;">
+        <input type="checkbox" id="audioReactive" checked> Visualizador reactivo
+      </label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">
+      <span>// CONVERSACIÓN</span>
+      <span class="right" id="tokenCount">tokens: 0</span>
+    </div>
+    <div class="response-area empty" id="responseArea">Aguardando interacción.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">// LOG DEL SISTEMA</div>
+    <div class="log-area" id="logArea">
+      <div class="log-entry"><span class="log-time">--:--:--</span>Sistema en espera.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>SANTIAGO · CL</span>
+    <span id="ttsStatus">TTS: READY</span>
+    <span id="sttStatus">STT: IDLE</span>
+    <span id="apiStatus">API: OFFLINE</span>
+    <span id="dateDisplay">--.--.----</span>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  const statusDot = $('statusDot'), statusText = $('statusText'), transcript = $('transcript');
+  const vizPanel = $('vizPanel'), vizStatusLabel = $('vizStatusLabel');
+  const startBtn = $('startBtn'), stopBtn = $('stopBtn'), testBtn = $('testBtn'), testMicBtn = $('testMicBtn');
+  const langSelect = $('langSelect'), voiceSelect = $('voiceSelect');
+  const rateSlider = $('rateSlider'), pitchSlider = $('pitchSlider');
+  const rateVal = $('rateVal'), pitchVal = $('pitchVal');
+  const logArea = $('logArea'), responseArea = $('responseArea');
+  const ttsStatus = $('ttsStatus'), sttStatus = $('sttStatus'), apiStatus = $('apiStatus');
+  const dateDisplay = $('dateDisplay');
+  const apiKey = $('apiKey'), saveKey = $('saveKey'), clearKey = $('clearKey');
+  const modelSelect = $('modelSelect'), memoryMode = $('memoryMode');
+  const testApi = $('testApi'), clearMemoryBtn = $('clearMemoryBtn');
+  const apiBadge = $('apiBadge'), tokenCount = $('tokenCount'), sttIndicator = $('sttIndicator');
+  const wakeRequired = $('wakeRequired'), debugMode = $('debugMode'), audioReactive = $('audioReactive');
+  const apiToggle = $('apiToggle'), apiSection = $('apiSection');
+  const canvas = $('particleCanvas'), ctx = canvas.getContext('2d');
+  const dashes = $('dashes'), dashes2 = $('dashes2');
+  const keyValidator = $('keyValidator');
+
+  for (let i = 0; i < 12; i++) {
+    dashes.appendChild(document.createElement('span'));
+    dashes2.appendChild(document.createElement('span'));
+  }
+
+  // ====== STATE MACHINE — single source of truth ======
+  const SttState = {
+    STOPPED: 'STOPPED',       // Not running, won't restart
+    STARTING: 'STARTING',     // start() called, awaiting onstart
+    RUNNING: 'RUNNING',       // Active and listening
+    STOPPING: 'STOPPING',     // stop() called, awaiting onend
+    PAUSED_TTS: 'PAUSED_TTS', // Paused for TTS, will resume
+    PAUSED_PROC: 'PAUSED_PROC', // Paused for command processing
+    ERROR: 'ERROR'            // Hard error, manual restart needed
+  };
+
+  let sttState = SttState.STOPPED;
+  let recognition = null;
+  let userWantsListening = false;  // User intent — only stop button changes this to false
+  let lastStartAttempt = 0;
+  let restartTimer = null;
+  let consecutiveFailures = 0;
+
+  let isAwake = false, isProcessing = false, isSpeaking = false;
+  let wakeTimeout = null, voices = [], conversationHistory = [], totalTokens = 0;
+  let audioLevel = 0, particles = [], apiSectionVisible = true;
+
+  function updateSttIndicator() {
+    sttIndicator.textContent = 'STT:' + sttState;
+    sttIndicator.className = 'stt-indicator ' + (sttState === SttState.RUNNING ? 'running' : 'stopped');
+  }
+
+  function setSttState(newState, reason) {
+    if (sttState === newState) return;
+    log('STT: ' + sttState + ' → ' + newState + (reason ? ' (' + reason + ')' : ''), 'debug');
+    sttState = newState;
+    updateSttIndicator();
+  }
+
+  // ====== KEY VALIDATOR ======
+  function validateKey(rawKey) {
+    keyValidator.innerHTML = '';
+    if (!rawKey || rawKey.length === 0) { addCheck('?', 'Esperando entrada...', 'neutral'); return false; }
+    const trimmed = rawKey.trim();
+    if (trimmed.length !== rawKey.length || /\s/.test(rawKey)) {
+      addCheck('✗', 'Espacios/saltos detectados', 'fail');
+    } else {
+      addCheck('✓', 'Sin espacios', 'ok');
+    }
+    if (trimmed.startsWith('sk-ant-api03-')) addCheck('✓', 'Prefijo correcto', 'ok');
+    else if (trimmed.startsWith('sk-ant-')) addCheck('!', 'Prefijo parcial', 'warn');
+    else { addCheck('✗', 'No es key de Anthropic', 'fail'); return false; }
+    const len = trimmed.length;
+    if (len < 80) { addCheck('✗', 'Muy corta (' + len + ' chars). Copie completa.', 'fail'); }
+    else if (len > 130) addCheck('!', 'Inusualmente larga (' + len + ')', 'warn');
+    else addCheck('✓', 'Longitud correcta (' + len + ')', 'ok');
+    if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) { addCheck('✗', 'Caracteres inválidos', 'fail'); return false; }
+    addCheck('✓', 'Caracteres válidos', 'ok');
+    return true;
+  }
+  function addCheck(symbol, msg, type) {
+    const div = document.createElement('div');
+    div.className = 'key-check ' + (type === 'ok' ? 'ok' : type === 'fail' ? 'fail' : type === 'warn' ? 'warn' : '');
+    div.innerHTML = '<span class="indicator">' + symbol + '</span><span>' + msg + '</span>';
+    keyValidator.appendChild(div);
+  }
+  apiKey.addEventListener('input', () => validateKey(apiKey.value));
+
+  // ====== CANVAS PARTICLES ======
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+  }
+  setTimeout(resizeCanvas, 100);
+  window.addEventListener('resize', () => setTimeout(resizeCanvas, 100));
+
+  class Particle {
+    constructor() { this.reset(); this.life = Math.random(); }
+    reset() {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * 80 + 20;
+      this.cx = Math.cos(angle) * dist; this.cy = Math.sin(angle) * dist;
+      this.angle = angle; this.dist = dist;
+      this.baseRadius = Math.random() * 1.4 + 0.4; this.radius = this.baseRadius;
+      this.life = 0; this.maxLife = Math.random() * 4 + 3;
+      this.trailLength = Math.random() * 20 + 8;
+      this.speed = Math.random() * 0.3 + 0.15;
+      this.brightness = Math.random() * 0.5 + 0.5;
+    }
+    update(dt, level) {
+      this.life += dt;
+      if (this.life >= this.maxLife) { this.reset(); return; }
+      this.angle += this.speed * dt * 0.5;
+      const breathing = Math.sin(this.life * 1.5) * 8;
+      const audioPush = level * 30;
+      const targetDist = this.dist + breathing + audioPush;
+      this.cx = Math.cos(this.angle) * targetDist;
+      this.cy = Math.sin(this.angle) * targetDist;
+      this.radius = this.baseRadius * (1 + level * 1.5);
+    }
+    draw(ctx, cx, cy) {
+      const x = cx + this.cx, y = cy + this.cy;
+      const trailEnd = this.trailLength * (0.5 + Math.sin(this.life * 2) * 0.3);
+      const g = ctx.createLinearGradient(x - Math.cos(this.angle) * trailEnd, y - Math.sin(this.angle) * trailEnd, x, y);
+      g.addColorStop(0, 'rgba(77, 208, 225, 0)');
+      g.addColorStop(1, 'rgba(128, 222, 234, ' + (this.brightness * 0.4) + ')');
+      ctx.strokeStyle = g; ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(this.angle) * trailEnd, y - Math.sin(this.angle) * trailEnd);
+      ctx.lineTo(x, y); ctx.stroke();
+      const gr = this.radius * 4;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, gr);
+      glow.addColorStop(0, 'rgba(0, 229, 255, ' + (this.brightness * 0.5) + ')');
+      glow.addColorStop(0.4, 'rgba(77, 208, 225, ' + (this.brightness * 0.2) + ')');
+      glow.addColorStop(1, 'rgba(77, 208, 225, 0)');
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, gr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(180, 240, 250, ' + this.brightness + ')';
+      ctx.beginPath(); ctx.arc(x, y, this.radius, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  for (let i = 0; i < 90; i++) particles.push(new Particle());
+
+  let lastTime = performance.now();
+  function animate(now) {
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height, cx = w / 2, cy = h / 2;
+    ctx.fillStyle = 'rgba(6, 16, 24, 0.15)';
+    ctx.fillRect(0, 0, w, h);
+    const targetLevel = (sttState === SttState.RUNNING) && audioReactive.checked ? audioLevel : 0.05;
+    const renderLevel = isAwake ? Math.max(targetLevel, 0.4) : (isSpeaking ? 0.6 : targetLevel);
+    const coreGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 60 + renderLevel * 40);
+    coreGlow.addColorStop(0, 'rgba(0, 229, 255, ' + (0.15 + renderLevel * 0.3) + ')');
+    coreGlow.addColorStop(0.5, 'rgba(77, 208, 225, ' + (0.08 + renderLevel * 0.15) + ')');
+    coreGlow.addColorStop(1, 'rgba(77, 208, 225, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath(); ctx.arc(cx, cy, 100 + renderLevel * 50, 0, Math.PI * 2); ctx.fill();
+    for (const p of particles) { p.update(dt, renderLevel); p.draw(ctx, cx, cy); }
+    const dashCount = Math.floor(renderLevel * 12);
+    [...dashes.children, ...dashes2.children].forEach((d, i) => {
+      d.classList.toggle('active', (i % 12) < dashCount);
+    });
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  function log(msg, type) {
+    type = type || 'info';
+    if (type === 'debug' && !debugMode.checked) return;
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    const time = new Date().toLocaleTimeString('es-CL', { hour12: false });
+    entry.innerHTML = '<span class="log-time">' + time + '</span>' + msg;
+    logArea.appendChild(entry);
+    logArea.scrollTop = logArea.scrollHeight;
+    while (logArea.children.length > 120) logArea.removeChild(logArea.firstChild);
+  }
+
+  function setState(state) {
+    const cfg = {
+      idle: { dot: 'var(--text-tertiary)', text: 'STANDBY' },
+      listening: { dot: 'var(--success)', text: 'ESCUCHANDO' },
+      awake: { dot: 'var(--warm)', text: 'ACTIVADO' },
+      processing: { dot: 'var(--accent)', text: 'PROCESANDO' },
+      speaking: { dot: 'var(--accent-glow)', text: 'HABLANDO' },
+      error: { dot: 'var(--danger)', text: 'ERROR' }
+    };
+    const s = cfg[state] || cfg.idle;
+    statusDot.style.background = s.dot;
+    statusDot.style.boxShadow = '0 0 0 3px ' + s.dot + '33, 0 0 16px ' + s.dot;
+    statusText.textContent = s.text;
+    vizStatusLabel.textContent = s.text;
+    sttStatus.textContent = 'STT: ' + s.text;
+  }
+
+  function updateDate() {
+    const d = new Date();
+    dateDisplay.textContent = String(d.getDate()).padStart(2,'0') + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + d.getFullYear();
+  }
+  updateDate();
+
+  // ====== TTS ======
+  function loadVoices() {
+    voices = window.speechSynthesis.getVoices();
+    voiceSelect.innerHTML = '';
+    if (voices.length === 0) { const o = document.createElement('option'); o.textContent = 'Cargando...'; voiceSelect.appendChild(o); return; }
+    const preferred = voices.filter(v => /en-GB|British|Daniel|Oliver|Arthur|George/i.test(v.name + ' ' + v.lang));
+    const spanish = voices.filter(v => /es-/i.test(v.lang) && !preferred.includes(v));
+    const others = voices.filter(v => !preferred.includes(v) && !spanish.includes(v));
+    [...preferred, ...spanish, ...others].forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = voices.indexOf(v);
+      opt.textContent = v.name + ' — ' + v.lang;
+      voiceSelect.appendChild(opt);
+    });
+    ttsStatus.textContent = 'TTS: ' + voices.length + ' VOCES';
+    if (langSelect.value.startsWith('es') && spanish.length > 0) voiceSelect.value = voices.indexOf(spanish[0]);
+  }
+  if ('speechSynthesis' in window) { loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
+  else { log('SpeechSynthesis no soportado', 'err'); ttsStatus.textContent = 'TTS: N/A'; }
+
+  function speak(text, callback) {
+    if (!('speechSynthesis' in window)) { if (callback) callback(); return; }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const idx = parseInt(voiceSelect.value);
+    if (!isNaN(idx) && voices[idx]) u.voice = voices[idx];
+    u.rate = parseFloat(rateSlider.value); u.pitch = parseFloat(pitchSlider.value); u.volume = 1;
+    isSpeaking = true; setState('speaking');
+
+    // Pause STT for TTS
+    if (sttState === SttState.RUNNING || sttState === SttState.STARTING) {
+      setSttState(SttState.PAUSED_TTS, 'TTS starting');
+      stopSTT();
+    }
+
+    u.onend = () => {
+      isSpeaking = false;
+      if (callback) callback();
+      // Resume STT if user still wants listening
+      if (userWantsListening && !isProcessing) {
+        setTimeout(() => startSTT(), 800);
+        setState('listening');
+      } else {
+        setState('idle');
+      }
+    };
+    u.onerror = (e) => { isSpeaking = false; log('TTS error: ' + e.error, 'err'); setState('idle'); };
+    window.speechSynthesis.speak(u);
+  }
+
+  // ====== CLAUDE API ======
+  const SYSTEM_PROMPT = "Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), asistente IA inspirado en Iron Man. PERSONALIDAD: Tono británico, ingenioso, elegante, calmo, leal. Usas 'Sir' al dirigirte al usuario. Ultra-competente. PROTOCOLO DE VOZ: Respuestas CORTAS (1-3 oraciones, menos de 50 palabras). Sin markdown, sin emojis. Español natural con elegancia británica. Si requiere datos extensos, dilos brevemente.";
+
+  function getAPIKey() { return localStorage.getItem('jarvis_api_key') || ''; }
+  function updateApiStatus(connected, label) {
+    apiBadge.textContent = label || (connected ? 'API: ONLINE' : 'API: OFFLINE');
+    apiBadge.className = 'api-badge' + (connected ? '' : ' disconnected');
+    apiStatus.textContent = apiBadge.textContent;
+  }
+  function loadApiKey() {
+    const k = getAPIKey();
+    if (k) { apiKey.value = k; validateKey(k); updateApiStatus(true); log('API key cargada', 'api'); }
+    const sm = localStorage.getItem('jarvis_model'); if (sm) modelSelect.value = sm;
+    const sM = localStorage.getItem('jarvis_memory_mode'); if (sM) memoryMode.value = sM;
+  }
+
+  saveKey.addEventListener('click', () => {
+    let k = apiKey.value.trim();
+    if (!k) { log('Key vacía', 'err'); return; }
+    if (!k.startsWith('sk-ant-')) { log('Formato inválido', 'err'); return; }
+    apiKey.value = k; validateKey(k);
+    localStorage.setItem('jarvis_api_key', k);
+    localStorage.setItem('jarvis_model', modelSelect.value);
+    localStorage.setItem('jarvis_memory_mode', memoryMode.value);
+    updateApiStatus(true, 'API: SAVED');
+    log('✓ Key guardada (' + k.length + ' chars)', 'api');
+  });
+  clearKey.addEventListener('click', () => {
+    localStorage.removeItem('jarvis_api_key');
+    apiKey.value = ''; validateKey(''); updateApiStatus(false);
+    log('Key eliminada', 'api');
+  });
+  modelSelect.addEventListener('change', () => localStorage.setItem('jarvis_model', modelSelect.value));
+  memoryMode.addEventListener('change', () => localStorage.setItem('jarvis_memory_mode', memoryMode.value));
+
+  testApi.addEventListener('click', async () => {
+    const k = getAPIKey();
+    if (!k) { log('Configure y GUARDE una key primero', 'err'); return; }
+    log('═══ TEST API ═══', 'api');
+    setState('processing');
+    try {
+      const resp = await callClaude('Confirma operatividad en máximo 8 palabras.', false);
+      log('✓ API OK: ' + resp, 'api');
+      updateApiStatus(true, 'API: ONLINE');
+      speak(resp);
+    } catch(e) {
+      log('✗ ' + e.message, 'err');
+      diagnoseApiError(e.message);
+      setState('idle');
+    }
+  });
+
+  function diagnoseApiError(msg) {
+    if (msg.includes('401')) {
+      log('🔴 401: key inválida. Verifique billing en console.anthropic.com', 'err');
+    } else if (msg.includes('404')) {
+      log('🔴 404: modelo inexistente. Pruebe Claude 3.5 Sonnet (legacy)', 'err');
+    } else if (msg.includes('429')) {
+      log('🔴 429: rate limit. Espere unos segundos', 'err');
+    }
+  }
+
+  clearMemoryBtn.addEventListener('click', () => {
+    conversationHistory = []; totalTokens = 0;
+    tokenCount.textContent = 'tokens: 0';
+    log('Memoria borrada', 'api');
+    speak('Memoria reiniciada, Sir.');
+  });
+
+  async function callClaude(userMessage, useMemory) {
+    if (useMemory === undefined) useMemory = true;
+    const k = getAPIKey();
+    if (!k) throw new Error('No API key');
+    let messages = [];
+    if (useMemory) {
+      const mode = memoryMode.value;
+      if (mode === 'session') messages = conversationHistory.slice();
+      else if (mode === 'last5') messages = conversationHistory.slice(-10);
+    }
+    messages.push({ role: 'user', content: userMessage });
+    const body = { model: modelSelect.value, max_tokens: 1024, system: SYSTEM_PROMPT, messages: messages };
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': k, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      const txt = await response.text();
+      throw new Error('HTTP ' + response.status + ': ' + txt.substring(0, 250));
+    }
+    const data = await response.json();
+    const reply = data.content[0].text;
+    if (useMemory) {
+      conversationHistory.push({ role: 'user', content: userMessage });
+      conversationHistory.push({ role: 'assistant', content: reply });
+    }
+    if (data.usage) {
+      totalTokens += (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
+      tokenCount.textContent = 'tokens: ' + totalTokens.toLocaleString();
+    }
+    return reply;
+  }
+
+  // ====== STT — STATE-MACHINE-DRIVEN ======
+  function createRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return null;
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = langSelect.value;
+    r.maxAlternatives = 3;
+
+    r.onstart = () => {
+      setSttState(SttState.RUNNING, 'onstart');
+      consecutiveFailures = 0;
+      log('🟢 STT activo y escuchando', 'info');
+    };
+    r.onaudiostart = () => { audioLevel = 0.15; };
+    r.onsoundstart = () => { audioLevel = 0.4; };
+    r.onspeechstart = () => { log('🗣 Voz detectada', 'debug'); audioLevel = 0.7; };
+    r.onspeechend = () => { audioLevel = 0.2; };
+    r.onsoundend = () => { audioLevel = 0.05; };
+    r.onaudioend = () => { audioLevel = 0; };
+
+    r.onresult = (event) => {
+      let interim = '', final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) final += t; else interim += t;
+      }
+      const combined = (final + interim).trim();
+      if (combined) {
+        transcript.textContent = '"' + combined + '"';
+        transcript.classList.remove('placeholder');
+        if (final) { log('🎤 ESCUCHÉ: "' + final.trim() + '"', 'heard'); transcript.classList.remove('interim'); }
+        else transcript.classList.add('interim');
+      }
+      const lower = combined.toLowerCase();
+      const wakeRegex = /\b(hey|oye|hola|ok|okay)?\s*(j[aeiou]r?vis|y[aeiou]r?vis|h?arvis|charvis|jervi?s?|llarvis)\b/i;
+      if (!wakeRequired.checked) {
+        if (final.trim() && final.trim().length > 2 && !isProcessing && !isSpeaking) {
+          const cleaned = final.trim().replace(/^(hey|oye|hola|ok|okay)?\s*(j[aeiou]r?vis|y[aeiou]r?vis|h?arvis|charvis)[,.\s]*/i, '').trim();
+          if (cleaned.length > 2) processCommand(cleaned);
+        }
+      } else if (!isAwake) {
+        if (wakeRegex.test(lower)) {
+          isAwake = true; setState('awake');
+          log('✓ WAKE WORD', 'wake');
+          speak('A su servicio, Sir.');
+          if (wakeTimeout) clearTimeout(wakeTimeout);
+          wakeTimeout = setTimeout(() => { isAwake = false; if (userWantsListening) setState('listening'); }, 20000);
+        }
+      } else if (final.trim()) {
+        const cmd = final.trim().replace(/^(hey|oye|hola|ok|okay)?\s*(j[aeiou]r?vis|y[aeiou]r?vis|h?arvis|charvis)[,.\s]*/i, '').trim();
+        if (cmd.length > 2 && !isProcessing) {
+          isAwake = false; if (wakeTimeout) clearTimeout(wakeTimeout);
+          processCommand(cmd);
+        }
+      }
+    };
+
+    r.onerror = (event) => {
+      const err = event.error;
+      // 'aborted' is NORMAL when we stop/restart manually — treat as info
+      if (err === 'aborted') {
+        log('STT aborted (normal en reinicio)', 'debug');
+        return;
+      }
+      // 'no-speech' is also normal during silence
+      if (err === 'no-speech') {
+        log('STT silencio detectado', 'debug');
+        return;
+      }
+      log('STT error: ' + err, 'err');
+      if (err === 'not-allowed') {
+        transcript.textContent = 'Permiso de micrófono denegado';
+        setState('error');
+        userWantsListening = false;
+        setSttState(SttState.ERROR, 'not-allowed');
+        startBtn.disabled = false; stopBtn.disabled = true;
+      } else if (err === 'network') {
+        log('⚠ Sin conexión a Google Speech Service', 'err');
+        consecutiveFailures++;
+      } else if (err === 'language-not-supported') {
+        log('⚠ Idioma no soportado. Cambiando a es-ES', 'err');
+        langSelect.value = 'es-ES';
+      } else {
+        consecutiveFailures++;
+      }
+    };
+
+    r.onend = () => {
+      setSttState(SttState.STOPPED, 'onend');
+      // Decide whether to restart
+      if (userWantsListening && !isSpeaking && !isProcessing && consecutiveFailures < 5) {
+        // Schedule a restart with cooldown
+        scheduleRestart();
+      } else if (consecutiveFailures >= 5) {
+        log('✗ Demasiados fallos consecutivos. Detenido. Reinicie manualmente.', 'err');
+        userWantsListening = false;
+        setSttState(SttState.ERROR, 'too-many-failures');
+        setState('error');
+        startBtn.disabled = false; stopBtn.disabled = true;
+      }
+    };
+
+    return r;
+  }
+
+  function scheduleRestart() {
+    if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
+    const elapsed = Date.now() - lastStartAttempt;
+    const cooldown = Math.max(800 - elapsed, 200);
+    restartTimer = setTimeout(() => {
+      restartTimer = null;
+      if (userWantsListening && !isSpeaking && !isProcessing) {
+        startSTT();
+      }
+    }, cooldown);
+  }
+
+  function startSTT() {
+    // Lock: only start from STOPPED state, with cooldown
+    if (sttState !== SttState.STOPPED) {
+      log('STT no en STOPPED (' + sttState + '), abortando start', 'debug');
+      return false;
+    }
+    const elapsed = Date.now() - lastStartAttempt;
+    if (elapsed < 500) {
+      log('Cooldown activo (' + elapsed + 'ms), reagendando', 'debug');
+      scheduleRestart();
+      return false;
+    }
+
+    lastStartAttempt = Date.now();
+    setSttState(SttState.STARTING, 'startSTT called');
+
+    // Always create a fresh instance
+    recognition = createRecognition();
+    if (!recognition) {
+      log('✗ SpeechRecognition no soportado', 'err');
+      setSttState(SttState.ERROR, 'no-SR');
+      setState('error');
+      return false;
+    }
+
+    try {
+      recognition.start();
+      return true;
+    } catch(e) {
+      log('start() falló: ' + e.message, 'err');
+      setSttState(SttState.STOPPED, 'start-threw');
+      consecutiveFailures++;
+      if (userWantsListening && consecutiveFailures < 5) scheduleRestart();
+      return false;
+    }
+  }
+
+  function stopSTT() {
+    if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
+    if (!recognition) return;
+    if (sttState === SttState.RUNNING || sttState === SttState.STARTING) {
+      setSttState(SttState.STOPPING, 'stopSTT called');
+      try { recognition.stop(); } catch(e) { log('stop() falló: ' + e.message, 'debug'); }
+    }
+  }
+
+  async function processCommand(cmd) {
+    if (isProcessing) return;
+    isProcessing = true;
+    setSttState(sttState === SttState.RUNNING ? SttState.PAUSED_PROC : sttState, 'processing');
+    stopSTT();
+
+    log('Comando: "' + cmd + '"', 'user');
+    const userBlock = '<span class="user-label">▸ SIR:</span> ' + cmd;
+    const lower = cmd.toLowerCase();
+    let localResponse = null;
+    if (/qué hora|que hora|hora es/i.test(lower)) { localResponse = 'Son las ' + new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + ', Sir.'; }
+    else if (/qué día|que dia|qué fecha/i.test(lower)) { localResponse = 'Hoy es ' + new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ', Sir.'; }
+    else if (/abrir youtube|abre youtube/i.test(lower)) { window.open('https://youtube.com', '_blank'); localResponse = 'Abriendo YouTube, Sir.'; }
+    else if (/abrir google|abre google/i.test(lower)) { window.open('https://google.com', '_blank'); localResponse = 'Abriendo Google, Sir.'; }
+    else if (/^buscar |^busca /i.test(lower)) { const q = cmd.replace(/^(buscar|busca)\s+/i, ''); window.open('https://google.com/search?q=' + encodeURIComponent(q), '_blank'); localResponse = 'Buscando ' + q + ', Sir.'; }
+    else if (/apagar sistema|cierra sistema/i.test(lower)) { localResponse = 'Hasta pronto, Sir.'; setTimeout(() => stopBtn.click(), 2500); }
+
+    if (localResponse) {
+      appendResponse(userBlock + '\n<span class="jarvis-label">▸ JARVIS:</span> ' + localResponse);
+      speak(localResponse);
+      isProcessing = false;
+      return;
+    }
+    if (!getAPIKey()) {
+      const msg = 'API key no configurada, Sir.';
+      appendResponse(userBlock + '\n<span class="jarvis-label">▸ JARVIS:</span> ' + msg);
+      speak(msg); isProcessing = false; return;
+    }
+    setState('processing');
+    try {
+      const reply = await callClaude(cmd, true);
+      log('✓ Respuesta Claude', 'api');
+      appendResponse(userBlock + '\n<span class="jarvis-label">▸ JARVIS:</span> ' + reply);
+      speak(reply, () => { isProcessing = false; });
+    } catch(e) {
+      log('✗ Error API: ' + e.message, 'err');
+      diagnoseApiError(e.message);
+      const errMsg = 'Disculpe, Sir. Falla en la conexión.';
+      appendResponse(userBlock + '\n<span class="jarvis-label">▸ JARVIS:</span> ' + errMsg);
+      speak(errMsg); isProcessing = false;
+    }
+  }
+
+  function appendResponse(html) {
+    responseArea.classList.remove('empty');
+    if (responseArea.textContent.includes('Aguardando interacción')) responseArea.innerHTML = '';
+    if (responseArea.innerHTML) responseArea.innerHTML += '<div class="divider"></div>';
+    responseArea.innerHTML += html;
+    responseArea.scrollTop = responseArea.scrollHeight;
+  }
+
+  // ====== EVENTS ======
+  startBtn.addEventListener('click', () => {
+    log('═══ ACTIVANDO SISTEMA ═══', 'info');
+    consecutiveFailures = 0;
+    userWantsListening = true;
+    setState('listening');
+    transcript.textContent = wakeRequired.checked ? 'Esperando... diga "Hey JARVIS"' : 'Escuchando, Sir...';
+    transcript.classList.remove('placeholder');
+    startBtn.disabled = true; stopBtn.disabled = false;
+    startSTT();
+  });
+
+  stopBtn.addEventListener('click', () => {
+    log('═══ DETENIENDO SISTEMA ═══', 'info');
+    userWantsListening = false;
+    isAwake = false; isProcessing = false;
+    if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
+    stopSTT();
+    window.speechSynthesis.cancel();
+    audioLevel = 0; setState('idle');
+    transcript.textContent = 'Sistema detenido. Presione iniciar.';
+    transcript.classList.add('placeholder');
+    startBtn.disabled = false; stopBtn.disabled = true;
+  });
+
+  testBtn.addEventListener('click', () => { speak('Sistemas de voz operativos, Sir.'); });
+
+  testMicBtn.addEventListener('click', async () => {
+    log('═══ TEST DE MIC ═══', 'diag');
+    if (navigator.permissions) {
+      try { const p = await navigator.permissions.query({ name: 'microphone' }); log('Permiso: ' + p.state, 'diag'); } catch(e) {}
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      log('✓ Mic accesible: ' + (stream.getAudioTracks()[0]?.label || 'sin nombre'), 'diag');
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ac.createMediaStreamSource(stream);
+      const an = ac.createAnalyser(); an.fftSize = 256; src.connect(an);
+      const data = new Uint8Array(an.frequencyBinCount);
+      let maxL = 0; const t0 = Date.now();
+      log('Hable AHORA durante 3 segundos...', 'diag');
+      const iv = setInterval(() => {
+        an.getByteFrequencyData(data);
+        let sum = 0; for (let i = 0; i < data.length; i++) sum += data[i];
+        const avg = sum / data.length;
+        if (avg > maxL) maxL = avg;
+        audioLevel = avg / 255;
+        if (Date.now() - t0 > 3000) {
+          clearInterval(iv);
+          stream.getTracks().forEach(t => t.stop()); ac.close(); audioLevel = 0;
+          if (maxL > 20) log('✓ Mic detecta sonido (max: ' + Math.round(maxL) + '/255)', 'diag');
+          else log('✗ NO se detectó sonido', 'err');
+          log('═══ FIN TEST ═══', 'diag');
+        }
+      }, 100);
+    } catch(e) { log('✗ Error mic: ' + e.name, 'err'); }
+  });
+
+  rateSlider.addEventListener('input', () => rateVal.textContent = parseFloat(rateSlider.value).toFixed(2));
+  pitchSlider.addEventListener('input', () => pitchVal.textContent = parseFloat(pitchSlider.value).toFixed(2));
+  langSelect.addEventListener('change', () => {
+    log('Idioma → ' + langSelect.value, 'info');
+    if (userWantsListening) { stopSTT(); setTimeout(() => startSTT(), 800); }
+  });
+  wakeRequired.addEventListener('change', () => log('Wake word ' + (wakeRequired.checked ? 'ON' : 'OFF'), 'info'));
+  apiToggle.addEventListener('click', () => {
+    apiSectionVisible = !apiSectionVisible;
+    apiSection.style.display = apiSectionVisible ? 'block' : 'none';
+    apiToggle.textContent = apiSectionVisible ? '[ ocultar ▲ ]' : '[ mostrar ▼ ]';
+  });
+
+  // Handle visibility change (Chrome pauses STT when tab loses focus)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && userWantsListening) {
+      log('Pestaña en background — STT puede pausarse', 'debug');
+    } else if (!document.hidden && userWantsListening && sttState === SttState.STOPPED) {
+      log('Pestaña vuelve a foco — reanudando STT', 'debug');
+      scheduleRestart();
+    }
+  });
+
+  setState('idle');
+  updateSttIndicator();
+  loadApiKey();
+  log('J.A.R.V.I.S. v3.2 inicializado (state machine + locks)', 'info');
+  log('💡 Bucle "aborted" resuelto — STT estable con cooldown', 'jarvis');
+})();
+</script>
+</body>
+</html>
