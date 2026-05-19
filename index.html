@@ -594,8 +594,8 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
       const o = document.createElement('option');
       o.textContent = 'Cargando...';
       voiceSelect.appendChild(o);
-      log('⚠ Voces TTS aún no cargadas. Presione "🔄 Recargar Voces" en unos segundos.', 'warn');
-      return;
+      log('⚠ Voces TTS aún no cargadas. Reintentando...', 'warn');
+      return false;
     }
     const preferred = voices.filter(v => /en-GB|British|Daniel|Oliver|Arthur|George/i.test(v.name + ' ' + v.lang));
     const spanish = voices.filter(v => /es-/i.test(v.lang) && !preferred.includes(v));
@@ -608,17 +608,38 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
     });
     log('✓ TTS: ' + voices.length + ' voces cargadas', 'success');
     if (langSelect.value.startsWith('es') && spanish.length > 0) voiceSelect.value = voices.indexOf(spanish[0]);
+    return true;
   }
   
   if ('speechSynthesis' in window) {
+    // Try to load voices immediately
     loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    
+    // Listen for voices changed event
+    window.speechSynthesis.onvoiceschanged = () => {
+      if (loadVoices()) {
+        log('✓ Voces TTS recargadas automáticamente', 'success');
+      }
+    };
+    
+    // Force load after 1 second if not loaded yet
+    setTimeout(() => {
+      if (voices.length === 0) {
+        log('Forzando carga de voces...', 'info');
+        loadVoices();
+      }
+    }, 1000);
+    
+    // Final attempt after 3 seconds
+    setTimeout(() => {
+      if (voices.length === 0) {
+        log('⚠ Las voces no se han cargado automáticamente. Presione "🔄 Recargar Voces" manualmente.', 'warn');
+      }
+    }, 3000);
     
     // Chrome TTS workaround: keep speechSynthesis "warm"
-    // Chrome sometimes stops TTS after being idle - this prevents it
     setInterval(() => {
       if (!isSpeaking && window.speechSynthesis.speaking) {
-        // Force resume if stuck
         window.speechSynthesis.resume();
       }
     }, 5000);
