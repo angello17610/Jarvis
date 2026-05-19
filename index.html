@@ -239,7 +239,7 @@
       <span>// CONVERSACIÓN</span>
       <span class="right" id="tokenCount">tokens: 0</span>
     </div>
-    <div class="response-area empty" id="responseArea">Aguardando interacción, Sir.</div>
+    <div class="response-area empty" id="responseArea">Aguardando interacción, Angelo.</div>
   </div>
 
   <!-- LOG -->
@@ -301,17 +301,17 @@
   let conversationHistory = [], totalTokens = 0, sessionStartTime = Date.now();
 
   // System prompts
-  const SYSTEM_PROMPT_SHORT = "Eres J.A.R.V.I.S., asistente IA de Iron Man. Tono británico, elegante, leal. Usas 'Sir'. RESPUESTAS ULTRA-CORTAS: 1 oración, máximo 25 palabras. Sin markdown, sin emojis. Español natural con elegancia británica.";
+  const SYSTEM_PROMPT_SHORT = "Eres J.A.R.V.I.S., asistente IA de Iron Man. Tono británico, elegante, leal. Tratas al usuario como 'Angelo'. RESPUESTAS ULTRA-CORTAS: 1 oración, máximo 25 palabras. Sin markdown, sin emojis. Español natural con elegancia británica.";
   
   const SYSTEM_PROMPT_LONG = `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), asistente IA inspirado en Iron Man.
 
 PERSONALIDAD:
 - Tono británico, ingenioso, elegante, calmo bajo presión, profundamente leal
-- Tratas al usuario como "Sir"
+- Tratas al usuario como "Angelo" (su nombre)
 - Ultra-competente y sofisticado
 - Cuando detectes error técnico o problema, priorizas diagnóstico claro y solución directa
 
-ROL DEL USUARIO:
+ROL DEL USUARIO (Angelo):
 - Programación y Control de Gestión
 - Requiere asistencia en debugging, arquitectura, análisis de código
 - Valora respuestas técnicas precisas con terminología profesional
@@ -445,7 +445,7 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
       tokenCount.textContent = 'tokens: 0';
       log('Memoria persistente borrada', 'info');
       updateMemoryBadge();
-      speak('Memoria completamente reiniciada, Sir.');
+      speak('Memoria completamente reiniciada, Angelo.');
     } catch(e) { log('Error borrando memoria: ' + e.message, 'err'); }
   });
 
@@ -742,7 +742,7 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
     stopSTT();
 
     log('💬 Comando: "' + cmd + '"', 'heard');
-    const userBlock = '<span class="user-label">▸ SIR:</span> ' + cmd;
+    const userBlock = '<span class="user-label">▸ ANGELO:</span> ' + cmd;
     const lower = cmd.toLowerCase();
     let localResponse = null;
 
@@ -750,49 +750,49 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
     if (/jarvis\s+dashboard|muéstrame dashboard|abrir dashboard/i.test(lower)) {
       if (dashboardUrl.value) {
         window.open(dashboardUrl.value, '_blank');
-        localResponse = 'Abriendo dashboard, Sir.';
-      } else localResponse = 'Dashboard no configurado. Configure en comandos empresariales, Sir.';
+        localResponse = 'Abriendo dashboard, Angelo.';
+      } else localResponse = 'Dashboard no configurado. Configure en comandos empresariales, Angelo.';
     }
     else if (/\blogs\b|últimos logs|muestra logs/i.test(lower)) {
       if (logsUrl.value) {
         window.open(logsUrl.value, '_blank');
-        localResponse = 'Abriendo logs del sistema, Sir.';
-      } else localResponse = 'URL de logs no configurada, Sir.';
+        localResponse = 'Abriendo logs del sistema, Angelo.';
+      } else localResponse = 'URL de logs no configurada, Angelo.';
     }
     else if (/git\s+status|estado del repo|estado git/i.test(lower)) {
-      localResponse = 'Simulación de git status (FASE 2: integración real). Proyecto: ' + (activeProject.value || 'no definido') + '. En FASE 2 ejecutaré comandos reales, Sir.';
+      localResponse = 'Simulación de git status (FASE 2: integración real). Proyecto: ' + (activeProject.value || 'no definido') + '. En FASE 2 ejecutaré comandos reales, Angelo.';
     }
     else if (/incidentes activos|alertas|problemas activos/i.test(lower)) {
       if (incidentsUrl.value) {
         window.open(incidentsUrl.value, '_blank');
-        localResponse = 'Revisando sistema de incidentes, Sir.';
-      } else localResponse = 'Sistema de incidentes no configurado, Sir.';
+        localResponse = 'Revisando sistema de incidentes, Angelo.';
+      } else localResponse = 'Sistema de incidentes no configurado, Angelo.';
     }
     else if (/^anota\s+(.+)/i.test(lower)) {
       const note = lower.match(/^anota\s+(.+)/i)[1];
       await saveNote(note);
-      localResponse = 'Nota guardada en memoria persistente, Sir.';
+      localResponse = 'Nota guardada en memoria persistente, Angelo.';
     }
     else if (/^proyecto\s+(.+)/i.test(lower)) {
       const proj = lower.match(/^proyecto\s+(.+)/i)[1];
       activeProject.value = proj;
       localStorage.setItem('jarvis_project', proj);
-      localResponse = 'Contexto cambiado a proyecto "' + proj + '", Sir.';
+      localResponse = 'Contexto cambiado a proyecto "' + proj + '", Angelo.';
     }
     else if (/resume sesión|resumen de sesión|qué hemos hablado/i.test(lower)) {
       if (conversationHistory.length === 0) {
-        localResponse = 'No hay conversación que resumir aún, Sir.';
+        localResponse = 'No hay conversación que resumir aún, Angelo.';
       } else {
         // Generate summary via API
         setState('processing');
         try {
           const summary = await callClaude('Genera un resumen ejecutivo de los temas principales que hemos discutido en esta sesión. Máximo 5 puntos clave.', true, false);
           appendResponse(userBlock + '\n<span class="jarvis-label">▸ JARVIS:</span> ' + summary);
-          speak('Resumen generado, Sir.', () => { isProcessing = false; });
+          speak('Resumen generado, Angelo.', () => { isProcessing = false; });
           return;
         } catch(e) {
           log('Error generando resumen: ' + e.message, 'err');
-          localResponse = 'Error generando resumen, Sir.';
+          localResponse = 'Error generando resumen, Angelo.';
         }
       }
     }
@@ -811,39 +811,39 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
       }
       if (found) {
         window.open(found, '_blank');
-        localResponse = 'Abriendo documentación de ' + topic + ', Sir.';
+        localResponse = 'Abriendo documentación de ' + topic + ', Angelo.';
       } else {
         window.open('https://www.google.com/search?q=' + encodeURIComponent(topic + ' documentation'), '_blank');
-        localResponse = 'Buscando documentación de ' + topic + ', Sir.';
+        localResponse = 'Buscando documentación de ' + topic + ', Angelo.';
       }
     }
     // BASIC LOCAL COMMANDS
     else if (/qué hora|que hora|hora es/i.test(lower)) {
-      localResponse = 'Son las ' + new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + ', Sir.';
+      localResponse = 'Son las ' + new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + ', Angelo.';
     }
     else if (/qué día|que dia|qué fecha/i.test(lower)) {
-      localResponse = 'Hoy es ' + new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ', Sir.';
+      localResponse = 'Hoy es ' + new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ', Angelo.';
     }
     else if (/abrir youtube|abre youtube/i.test(lower)) {
       window.open('https://youtube.com', '_blank');
-      localResponse = 'Abriendo YouTube, Sir.';
+      localResponse = 'Abriendo YouTube, Angelo.';
     }
     else if (/abrir google|abre google/i.test(lower)) {
       window.open('https://google.com', '_blank');
-      localResponse = 'Abriendo Google, Sir.';
+      localResponse = 'Abriendo Google, Angelo.';
     }
     else if (/^buscar |^busca /i.test(lower)) {
       const q = cmd.replace(/^(buscar|busca)\s+/i, '');
       window.open('https://google.com/search?q=' + encodeURIComponent(q), '_blank');
-      localResponse = 'Buscando "' + q + '", Sir.';
+      localResponse = 'Buscando "' + q + '", Angelo.';
     }
     else if (/stack overflow|busca en so/i.test(lower)) {
       const q = cmd.replace(/.*(stack overflow|busca en so)\s*/i, '');
       window.open('https://stackoverflow.com/search?q=' + encodeURIComponent(q), '_blank');
-      localResponse = 'Buscando en Stack Overflow, Sir.';
+      localResponse = 'Buscando en Stack Overflow, Angelo.';
     }
     else if (/apagar sistema|cierra sistema/i.test(lower)) {
-      localResponse = 'Hasta pronto, Sir.';
+      localResponse = 'Hasta pronto, Angelo.';
       setTimeout(() => stopBtn.click(), 2500);
     }
 
@@ -856,7 +856,7 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
 
     // API CALL
     if (!getAPIKey()) {
-      const msg = 'API key no configurada, Sir. Configure en el panel superior.';
+      const msg = 'API key no configurada, Angelo. Configure en el panel superior.';
       appendResponse(userBlock + '\n<span class="jarvis-label">▸ JARVIS:</span> ' + msg);
       speak(msg);
       isProcessing = false;
@@ -871,7 +871,7 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
       speak(reply, () => { isProcessing = false; });
     } catch(e) {
       log('✗ Error API: ' + e.message, 'err');
-      const errMsg = 'Disculpe, Sir. Error de conexión con Claude.';
+      const errMsg = 'Disculpe, Angelo. Error de conexión con Claude.';
       appendResponse(userBlock + '\n<span class="jarvis-label">▸ JARVIS:</span> ' + errMsg);
       speak(errMsg);
       isProcessing = false;
@@ -1009,7 +1009,7 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
     userWantsListening = true;
     sessionStartTime = Date.now();
     setState('listening');
-    transcript.textContent = 'Escuchando, Sir. Conversación continua activada.';
+    transcript.textContent = 'Escuchando, Angelo. Conversación continua activada.';
     transcript.classList.remove('placeholder');
     startBtn.disabled = true; stopBtn.disabled = false;
     startSTT();
@@ -1033,7 +1033,7 @@ Si usuario dice "proyecto [nombre]": confirma cambio de contexto al proyecto.`;
   });
 
   testVoiceBtn.addEventListener('click', () => {
-    speak('Sistemas de voz operativos, Sir. JARVIS versión 3.3 Enterprise listo.');
+    speak('Sistemas de voz operativos, Angelo. JARVIS versión 3.3 Enterprise listo.');
   });
 
   rateSlider.addEventListener('input', () => rateVal.textContent = parseFloat(rateSlider.value).toFixed(2));
