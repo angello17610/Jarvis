@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/28020195/README.md)
+[README.md](https://github.com/user-attachments/files/28026901/README.md)
 # J.A.R.V.I.S. v3.3 — Enterprise Ready
 
 > Asistente IA de voz con personalidad británica, Claude Sonnet 4.5, memoria persistente y comandos empresariales.
